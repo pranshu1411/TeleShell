@@ -32,4 +32,11 @@ export class ActionTracker {
             (a) => isMutationType(a.type) && a.status === "pending"
         )
     }
+
+    updateStatus(id: string, status: ActionStatus, userApproved?: boolean): void {
+        const a = this.actions.find((x) => x.id === id);
+        if (!a) return;
+        a.status = status;
+        if (userApproved !== undefined) a.userApproved = userApproved;
+    }
 }
