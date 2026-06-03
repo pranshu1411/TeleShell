@@ -76,4 +76,81 @@ export class ToolExecuter {
         if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return undefined;
         return fs.readFileSync(abs, "utf8");
     }
+
+    readFile(rel: string): string {
+        this.assertNotExcluded(rel, "read_file");
+        const abs = this.resolveSafe(rel);
+        if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+            throw new Error(`File not found: ${rel}`);
+        }
+        const st = fs.statSync(abs);
+        if (st.size > this.config.maxFileSizeToRead) {
+            throw new Error(`File too large: ${rel}`);
+        }
+        const text = fs.readFileSync(abs, "utf8");
+        this.tracker.log({
+            type: "code_analysis",
+            path: this.norm(rel),
+            details: { after: text, toolName: "read_file" },
+            status: "executed",
+        });
+        return text;
+    }
+
+    createFile(rel: string, content: string): string {
+        if (!this.config.tools.allowFileCreation)
+            throw new Error("File creation disabled");
+        this.assertNotExcluded(rel, "create_file");
+        const key = this.norm(rel);
+        const abs = this.resolveSafe(rel);
+        if (fs.existsSync(abs) && !this.deleted.has(key)) {
+            throw new Error(`create_file: already exists: ${rel}`);
+        }
+        this.deleted.delete(key);
+        this.overlay.set(key, content);
+        this.tracker.log({
+            type: "file_create",
+            path: key,
+            details: { after: content },
+            status: "pending",
+        });
+        return `Staged new file: ${key}`;
+    }
+
+    modifyFile(rel: string, content: string): string {
+        if (!this.config.tools.allowFileModification)
+            throw new Error("File modification disabled");
+        this.assertNotExcluded(rel, "modify_file");
+        const before = this.getEffectiveText(rel);
+        if (before === undefined)
+            throw new Error(`modify_file: file not found: ${rel}`);
+        const key = this.norm(rel);
+        this.overlay.set(key, content);
+        this.tracker.log({
+            type: "file_modify",
+            path: key,
+            details: { before, after: content },
+            status: "pending",
+        });
+        return `Staged update: ${key}`;
+    }
+
+    deleteFile(rel: string): string {
+        if (!this.config.tools.allowFileModification)
+            throw new Error("File deletion disabled");
+        this.assertNotExcluded(rel, "delete_file");
+        const before = this.getEffectiveText(rel);
+        if (before === undefined)
+            throw new Error(`delete_file: file not found: ${rel}`);
+        const key = this.norm(rel);
+        this.overlay.delete(key);
+        this.deleted.add(key);
+        this.tracker.log({
+            type: "file_delete",
+            path: key,
+            details: { before },
+            status: "pending",
+        });
+        return `Staged delete: ${key}`;
+    }
 }
