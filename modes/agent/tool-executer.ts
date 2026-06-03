@@ -295,4 +295,16 @@ export class ToolExecuter {
         });
         return summary;
     }
+
+    queueShell(command: string): string {
+        if (!this.config.tools.allowShellExecution)
+            throw new Error("Shell execution disabled");
+        this.tracker.log({
+            type: "tool_execute",
+            path: "shell",
+            details: { command, toolName: "execute_shell" },
+            status: "pending",
+        });
+        return `Shell queued: ${command}`;
+    }
 }
