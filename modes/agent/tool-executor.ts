@@ -28,7 +28,7 @@ function maybeTextFile(filePath: string): boolean {
     return TEXT_EXT.has(ext) || ext === '';
 }
 
-export class ToolExecuter {
+export class ToolExecutor {
     private overlay = new Map<string, string>();
     private deleted = new Set<string>();
     private readonly norm = (rel: string) => path.posix.normalize(rel.split(path.sep).join("/")).replace(/^\//, "");
