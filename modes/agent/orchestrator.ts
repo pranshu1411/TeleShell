@@ -2,14 +2,17 @@ import { isCancel, text } from "@clack/prompts";
 import chalk from "chalk";
 import { defaultAgentConfig } from "./types";
 import { ActionTracker } from "./action-tracer";
-import { ToolExecuter } from "./tool-executer";
+import { ToolExecutor } from "./tool-executor";
+import { createAgentTools } from "./agent-tools";
+import { stepCountIs, ToolLoopAgent } from "ai";
+import { getAgentModel } from "../../ai";
 
 export async function runAgentMode() {
     console.log(chalk.bold('\n Agent Mode \n'));
 
     const goal = await text({
         message: "What would you like to do?",
-        placeholder: "create a new todo..."
+        placeholder: "Create a new project, update files, or run scripts..."
     });
     if (isCancel(goal) || !goal.trim) {
         return;
@@ -17,5 +20,32 @@ export async function runAgentMode() {
 
     const config = defaultAgentConfig();
     const tracker = new ActionTracker();
-    const executer = new ToolExecuter(tracker, config);
+    const executor = new ToolExecutor(tracker, config);
+    const tools = createAgentTools(executor);
+
+    const agent = new ToolLoopAgent({
+        model: getAgentModel(),
+        stopWhen: stepCountIs(42),
+        instructions: [
+            `Workspace root: ${config.codebasePath}`,
+            "All mutations are staged until approval.",
+        ].join("\n"),
+        tools,
+    });
+
+    const result = await agent.generate({
+        prompt: goal.trim(),
+        onStepFinish: ({ toolCalls }) => {
+            for (const tc of toolCalls) {
+                const preview = JSON.stringify(tc.input).slice(0, 160);
+                console.log(
+                    chalk.green(' ✓'),
+                    chalk.bold(String(tc.toolName)),
+                    chalk.dim(preview + (preview.length >= 160 ? "..." : ""))
+                );
+            }
+        },
+    });
+
+    if (result.text?.trim()) console.log(result.text);
 }
