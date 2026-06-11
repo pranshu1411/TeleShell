@@ -11,6 +11,7 @@ import { renderTerminalMarkdown } from "../../tui/terminal-md.ts";
 import { generatePlan } from "./planner.ts";
 import { printPlan, selectSteps } from "./selection.ts";
 import type { PlanStep, Plan } from "./types.ts";
+import { createWebTools } from "./web-tools.ts";
 
 function planAsMd(plan: Plan): string {
     let md = `# Plan: ${plan.goal}\n\n`;
@@ -70,7 +71,7 @@ export async function runPlanMode(): Promise<void> {
 
             const planTracker = new ActionTracker();
             const planExecutor = new ToolExecutor(planTracker, planConfig);
-            
+
             planExecutor.createFile(fileName as string, planAsMd(plan));
             const ok = await runApprovalFlow(planTracker);
             if (ok) planExecutor.applyApprovedFromTracker();
@@ -95,6 +96,7 @@ export async function runPlanMode(): Promise<void> {
     const executor = new ToolExecutor(tracker, config);
     const tools = {
         ...createAgentTools(executor),
+        ...createWebTools(tracker),
     }
 
     for (const step of selected) {
