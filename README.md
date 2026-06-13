@@ -18,6 +18,7 @@ A lightweight, terminal-centric shell that lets you interact with an AI-powered 
 ### Prerequisites
 
 - [Bun](https://bun.sh/) installed.
+- (Optional) [Docker](https://www.docker.com/) and Docker Compose.
 - (Optional) For Telegram mode: A Telegram bot token and your Telegram User ID.
 
 ### Installation
@@ -47,6 +48,18 @@ Make sure to configure the AI SDK environment variables depending on your chosen
 # Run the interactive shell
 bun run index.ts wakeup   # or
 npx teleshell wakeup
+```
+
+### Running with Docker
+
+Docker is a great way to run TeleShell in an isolated environment (safe for Agent operations) or to host the Telegram bot 24/7 in the background.
+
+```bash
+# Run the Telegram bot in the background
+docker-compose up -d telegram
+
+# Run the interactive CLI sandbox
+docker-compose run cli
 ```
 
 ## Usage
