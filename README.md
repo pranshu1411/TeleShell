@@ -50,6 +50,32 @@ bun run index.ts wakeup   # or
 npx teleshell wakeup
 ```
 
+### Running Globally (Standalone Executable)
+
+Bun allows you to compile the entire project into a single, standalone executable. This is the cleanest way to make `teleshell` available anywhere on your system without relying on global package managers.
+
+```bash
+# Compile into an executable
+bun build ./index.ts --compile --outfile teleshell
+```
+
+**Setup for Windows:**
+1. Create a dedicated folder for custom scripts (e.g., `C:\Users\YourUser\bin`).
+2. Move the newly generated `teleshell.exe` into this folder.
+3. Add this folder to your system's `PATH` environment variable:
+   - Press the Windows key, type `env`, and select **Edit the system environment variables**.
+   - Click **Environment Variables...**.
+   - Under *User variables*, edit **Path**, click **New**, and add the path to your new folder.
+   - Click **OK** to save on all windows.
+4. Restart your terminal. You can now type `teleshell wakeup` from any directory.
+
+**Setup for macOS/Linux:**
+Move the binary to a directory in your `PATH`, such as `/usr/local/bin`:
+```bash
+sudo mv teleshell /usr/local/bin/teleshell
+```
+You can now run `teleshell wakeup` globally.
+
 ### Running with Docker
 
 Docker is a great way to run TeleShell in an isolated environment (safe for Agent operations) or to host the Telegram bot 24/7 in the background.
