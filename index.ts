@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import { runWakeup } from "./tui/wakeup";
+import { runTelegramMode } from "./modes/telegram";
 
 const program = new Command();
 
@@ -15,6 +16,15 @@ program
     .action(
         async () => {
             await runWakeup();
+        }
+    );
+
+program
+    .command("telegram")
+    .description("start the telegram bot directly")
+    .action(
+        async () => {
+            await runTelegramMode();
         }
     );
 
