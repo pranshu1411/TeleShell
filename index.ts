@@ -1,5 +1,12 @@
 #!/usr/bin/env bun
 
+import { fileURLToPath } from "url";
+import path from "path";
+import dotenv from "dotenv";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, ".env") });
+
 import { Command } from "commander";
 import { runWakeup } from "./tui/wakeup";
 import { runTelegramMode } from "./modes/telegram";
@@ -22,8 +29,12 @@ program
 program
     .command("telegram")
     .description("start the telegram bot directly")
+    .option("--cwd <path>", "set the working directory")
     .action(
-        async () => {
+        async (options) => {
+            if (options.cwd) {
+                process.chdir(options.cwd);
+            }
             await runTelegramMode();
         }
     );

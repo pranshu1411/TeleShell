@@ -7,7 +7,7 @@ A lightweight, terminal-centric shell that lets you interact with an AI-powered 
 * **Wake-up Banner** – A welcoming interactive screen generated with `figlet` and `chalk`.
 * **Multi-Mode Entry** – `teleshell wakeup` starts the interactive session where you can choose between **CLI** and **Telegram** modes.
 * **CLI Sub-Modes**:
-  * **Agent Mode**: A language model receives the user's intent, writes a shell command, and executes it. Displays diffs in the terminal using `marked-terminal`.
+  * **Agent Mode**: A terminal agent that stages file modifications, reads context, and queues shell commands via a Virtual Filesystem overlay. Includes a strict safety approval flow before any operations are applied to disk, and integrates with local `.claude` and `.cursor` skills.
   * **Planner Mode**: Plan tasks and orchestrate more complex workflows.
   * **Ask Mode**: Ask general questions to the AI assistant.
 * **Telegram Mode**: Run TeleShell as a Telegram bot using `telegraf`, allowing you to control and interact with the AI assistant remotely.
@@ -18,7 +18,6 @@ A lightweight, terminal-centric shell that lets you interact with an AI-powered 
 ### Prerequisites
 
 - [Bun](https://bun.sh/) installed.
-- (Optional) [Docker](https://www.docker.com/) and Docker Compose.
 - (Optional) For Telegram mode: A Telegram bot token and your Telegram User ID.
 
 ### Installation
@@ -76,17 +75,24 @@ sudo mv teleshell /usr/local/bin/teleshell
 ```
 You can now run `teleshell wakeup` globally.
 
-### Running with Docker
+### Running the Telegram Bot in the Background (Windows)
 
-Docker is a great way to run TeleShell in an isolated environment (safe for Agent operations) or to host the Telegram bot 24/7 in the background.
+If you want the Telegram bot to have full access to your PC and run silently in the background without needing to keep a terminal open, you can use a hidden Windows script.
 
-```bash
-# Run the Telegram bot in the background
-docker-compose up -d telegram
+1. Ensure you have compiled the standalone executable (`teleshell.exe`) and added it to your `PATH`.
+2. Open **Notepad** (or any text editor) and paste the following code into it:
+   ```vbscript
+   Set WshShell = CreateObject("WScript.Shell")
+   ' Update this path to exactly where your .env file is located
+   WshShell.CurrentDirectory = "C:\Users\prans\Desktop\TeleShell"
+   ' The --cwd flag tells the bot to start operating from the specified directory (e.g., C:\)
+   WshShell.Run "teleshell telegram --cwd ""C:\""", 0, False
+   ```
+3. Save the file: Go to **File > Save As**, change "Save as type" to **All Files (\*.\*)**, and name the file `start-teleshell.vbs`.
+4. Double-click the file to start the bot silently. To stop it, kill `teleshell.exe` in Task Manager.
 
-# Run the interactive CLI sandbox
-docker-compose run cli
-```
+**Run automatically on startup:**
+Press `Win + R`, type `shell:startup`, and copy the `start-teleshell.vbs` script into the folder that opens. The bot will now run automatically in the background every time your PC boots (Note: It may take a minute or two for the bot to start after boot).
 
 ## Usage
 
@@ -94,7 +100,7 @@ After launching, you'll see a banner and a main menu.
 
 ### CLI Mode
 Select **CLI** to run the local terminal UI. You'll be prompted to choose a sub-mode:
-- **Agent mode**: Describe what you want to do in natural language, and the agent will generate and run the appropriate shell command.
+- **Agent mode**: Describe your goal, and the agent will read files, stage file modifications, and queue shell commands using a virtual filesystem. You must approve the batch of changes before anything is written to disk or executed.
 - **Planner mode**: Useful for complex queries requiring multiple steps.
 - **Ask mode**: Direct Q&A with the LLM.
 
@@ -110,6 +116,14 @@ Select **Telegram** to start the Telegram bot. It will send a welcome message to
 ├─ index.ts      # CLI bootstrap and entry point
 └─ package.json  # Dependencies and scripts
 ```
+
+## Roadmap & Known Limitations
+
+To evolve from a basic CLI copilot into a true autonomous agent, the following architectural flaws are next on the list to be addressed:
+1. **Synchronous Shell Execution**: Shell commands are currently queued and run *after* user approval. The agent cannot read `stdout/stderr` mid-thought to self-correct errors dynamically.
+2. **Diff-Based Editing**: File modifications currently replace the entire file content. A `patch` or line-level replace tool is required for scalable editing of large files without blowing up the context window.
+3. **Context Management**: The file reading tool dumps entire files into context. It needs line-range constraints.
+4. **Semantic Search**: Codebase search is currently limited to basic grep/globs. AST-based symbol lookup is needed to find function/class definitions efficiently.
 
 ## Contributing
 
