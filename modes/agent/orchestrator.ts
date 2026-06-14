@@ -4,6 +4,7 @@ import { defaultAgentConfig } from "./types";
 import { ActionTracker } from "./action-tracer";
 import { ToolExecutor } from "./tool-executor";
 import { createAgentTools } from "./agent-tools";
+import { createWebTools } from "../plan/web-tools";
 import { stepCountIs, ToolLoopAgent } from "ai";
 import { getAgentModel } from "../../ai";
 import { renderTerminalMarkdown } from "../../tui/terminal-md";
@@ -24,6 +25,9 @@ export async function runAgentMode() {
     const tracker = new ActionTracker();
     const executor = new ToolExecutor(tracker, config);
     const tools = createAgentTools(executor);
+    const webTools = createWebTools(tracker);
+
+    const allTools = { ...tools, ...webTools };
 
     const agent = new ToolLoopAgent({
         model: getAgentModel(),
@@ -32,7 +36,7 @@ export async function runAgentMode() {
             `Workspace root: ${config.codebasePath}`,
             "All mutations are staged until approval.",
         ].join("\n"),
-        tools,
+        tools: allTools,
     });
 
     const result = await agent.generate({
