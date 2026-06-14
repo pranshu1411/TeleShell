@@ -35,24 +35,26 @@ export async function runWakeup() {
 
     printBannerWithShadow(ascii);
 
-    const mode = await select({
-        message: "Welcome to TeleShell! Select the mode you want to use.",
-        options: [
-            { value: "cli", label: "CLI" },
-            { value: "telegram", label: "Telegram" },
-            { value: "exit", label: "Exit" }
-        ]
-    });
+    while (true) {
+        const mode = await select({
+            message: "Welcome to TeleShell! Select the mode you want to use.",
+            options: [
+                { value: "cli", label: "CLI" },
+                { value: "telegram", label: "Telegram" },
+                { value: "exit", label: "Exit" }
+            ]
+        });
 
-    if (isCancel(mode) || mode === "exit") {
-        console.log(chalk.dim("\n Exiting..."));
-        return;
-    }
+        if (isCancel(mode) || mode === "exit") {
+            console.log(chalk.dim("\n Exiting..."));
+            return;
+        }
 
-    if (mode === "cli") {
-        await runCliMode();
-    }
-    else if (mode === "telegram") {
-        await runTelegramMode();
+        if (mode === "cli") {
+            await runCliMode();
+        }
+        else if (mode === "telegram") {
+            await runTelegramMode();
+        }
     }
 }
