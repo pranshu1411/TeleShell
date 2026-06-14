@@ -7,9 +7,9 @@ A lightweight, terminal-centric shell that lets you interact with an AI-powered 
 * **Wake-up Banner** – A welcoming interactive screen generated with `figlet` and `chalk`.
 * **Multi-Mode Entry** – `teleshell wakeup` starts the interactive session where you can choose between **CLI** and **Telegram** modes.
 * **CLI Sub-Modes**:
-  * **Agent Mode**: A terminal agent that stages file modifications, reads context, and queues shell commands via a Virtual Filesystem overlay. Includes a strict safety approval flow before any operations are applied to disk, and integrates with local `.claude` and `.cursor` skills.
-  * **Planner Mode**: Plan tasks and orchestrate more complex workflows.
-  * **Ask Mode**: Ask general questions to the AI assistant.
+  * **Agent Mode**: A highly autonomous terminal agent that can read/edit files using precise line-based boundaries, search code via AST semantic search, run background processes, scrape the web using Firecrawl, and analyze Git context. All mutations are strictly staged in a Virtual Filesystem and require your approval before executing.
+  * **Planner Mode**: Plan tasks and orchestrate more complex workflows using web search and deep research.
+  * **Ask Mode**: Direct Q&A with the LLM.
 * **Telegram Mode**: Run TeleShell as a Telegram bot using `telegraf`, allowing you to control and interact with the AI assistant remotely.
 * **Modular Architecture** – Organized folders for `ai`, `modes` (like `agent`, `ask`, `plan`, `telegram`), and `tui`. New modes can be added with minimal friction.
 
@@ -117,13 +117,14 @@ Select **Telegram** to start the Telegram bot. It will send a welcome message to
 └─ package.json  # Dependencies and scripts
 ```
 
-## Roadmap & Known Limitations
+## Agent Toolkit
 
-To evolve from a basic CLI copilot into a true autonomous agent, the following architectural flaws are next on the list to be addressed:
-1. **Synchronous Shell Execution**: Shell commands are currently queued and run *after* user approval. The agent cannot read `stdout/stderr` mid-thought to self-correct errors dynamically.
-2. **Diff-Based Editing**: File modifications currently replace the entire file content. A `patch` or line-level replace tool is required for scalable editing of large files without blowing up the context window.
-3. **Context Management**: The file reading tool dumps entire files into context. It needs line-range constraints.
-4. **Semantic Search**: Codebase search is currently limited to basic grep/globs. AST-based symbol lookup is needed to find function/class definitions efficiently.
+The built-in Agent mode is equipped with an advanced arsenal of tools designed to navigate and manage a codebase safely:
+1. **Precise File Editing**: Uses exact line-range slicing to read and replace specific chunks of code, bypassing the token limits and whitespace errors of traditional diff-based agents.
+2. **AST Semantic Search**: Powered by `ts-morph`, the agent can perfectly locate class, function, and interface definitions without brute-forcing text matching.
+3. **Dynamic Shell & Background Tasks**: The agent can run read-only shell commands mid-thought to debug errors, or spin up detached background processes (like `npm run dev`) and monitor their logs.
+4. **Firecrawl Web Integration**: The agent can scrape documentation URLs or search the web to research dependencies before writing code.
+5. **Git Awareness**: Built-in tools allow the agent to inspect `git status` and `git diff` to seamlessly pick up where you left off.
 
 ## Contributing
 
