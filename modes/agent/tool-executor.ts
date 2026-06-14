@@ -444,6 +444,35 @@ export class ToolExecutor {
         return `Shell queued: ${command}`;
     }
 
+    executeImmediate(command: string): string {
+        if (!this.config.tools.allowShellExecution)
+            throw new Error("Shell execution disabled");
+        
+        const r = spawnSync(command, {
+            shell: true,
+            cwd: this.config.codebasePath,
+            encoding: "utf8",
+            maxBuffer: 16 * 1024 * 1024,
+        });
+
+        let output = "";
+        if (r.stdout) output += `STDOUT:\n${r.stdout}\n`;
+        if (r.stderr) output += `STDERR:\n${r.stderr}\n`;
+        if (r.error) output += `ERROR:\n${r.error.message}\n`;
+        if (r.status !== 0 && r.status !== null) output += `EXIT CODE: ${r.status}\n`;
+
+        const finalOutput = output.trim() || "(No output)";
+
+        this.tracker.log({
+            type: "tool_execute",
+            path: "shell",
+            details: { command, toolName: "execute_shell_immediate", toolResult: finalOutput },
+            status: "executed",
+        });
+
+        return finalOutput;
+    }
+
     skillRoots(): string[] {
         const extra =
             process.env.SKILLS_DIRS?.split(/[;]/)

@@ -124,6 +124,15 @@ export function createAgentTools(executor: ToolExecutor) {
             execute: async ({ command }) => executor.queueShell(command),
         }),
 
+        execute_shell_immediate: tool({
+            description:
+                "Execute a command immediately and return its output mid-thought. Bypasses the approval queue. EXCLUSIVELY for read-only checks like `ls`, `cat`, `tsc --noEmit`, or `git diff`. NEVER use this for commands that modify files or state.",
+            inputSchema: z.object({
+                command: z.string().describe("Single read-only command; runs with shell: true"),
+            }),
+            execute: async ({ command }) => executor.executeImmediate(command),
+        }),
+
         list_skills: tool({
             description:
                 "List absolute paths to SKILL.md files under configured skill directories (Cursor / Claude).",
