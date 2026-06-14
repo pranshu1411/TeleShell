@@ -84,6 +84,14 @@ export function createAgentTools(executor: ToolExecutor) {
                 executor.searchFiles(root, pattern, content_contains),
         }),
 
+        semantic_search: tool({
+            description: "Search for a symbol's definition (classes, functions, interfaces, variables) across the codebase. Returns the file path, precise line numbers, and the source code of the definition.",
+            inputSchema: z.object({
+                query: z.string().describe("The exact symbol name to search for (e.g. ToolExecutor, ActionTracker)."),
+            }),
+            execute: async ({ query }) => executor.semanticSearch(query),
+        }),
+
         analyze_codebase: tool({
             description:
                 "Summarize structure: file counts, size, extensions. Read-only.",

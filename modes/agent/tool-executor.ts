@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { Project, Node } from "ts-morph";
 import type { AgentConfig, ActionLog } from './types';
 import { ActionTracker } from './action-tracer';
 
@@ -290,6 +291,72 @@ export class ToolExecutor {
             status: "executed",
         });
         return out || "(no matches)";
+    }
+
+    semanticSearch(query: string): string {
+        const project = new Project();
+        const rootAbs = this.resolveSafe(".");
+
+        const candidateFiles: string[] = [];
+        const walk = (dir: string) => {
+            if (!fs.existsSync(dir)) return;
+            for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, ent.name);
+                const relP = path.relative(this.config.codebasePath, full);
+                if (this.excluded(relP)) continue;
+                if (ent.isDirectory()) {
+                    walk(full);
+                } else if (/\.(ts|tsx|js|jsx)$/i.test(ent.name)) {
+                    const text = fs.readFileSync(full, "utf8");
+                    const regex = new RegExp(`\\b${query}\\b`);
+                    if (regex.test(text)) {
+                        candidateFiles.push(full);
+                    }
+                }
+            }
+        };
+
+        walk(rootAbs);
+
+        if (candidateFiles.length === 0) return `No occurrences of "${query}" found.`;
+
+        project.addSourceFilesAtPaths(candidateFiles);
+
+        const results: string[] = [];
+        for (const sourceFile of project.getSourceFiles()) {
+            sourceFile.forEachDescendant(node => {
+                if (
+                    Node.isFunctionDeclaration(node) ||
+                    Node.isClassDeclaration(node) ||
+                    Node.isInterfaceDeclaration(node) ||
+                    Node.isTypeAliasDeclaration(node) ||
+                    Node.isVariableDeclaration(node) ||
+                    Node.isMethodDeclaration(node) ||
+                    Node.isPropertyDeclaration(node) ||
+                    Node.isEnumDeclaration(node)
+                ) {
+                    const nameNode = (node as any).getNameNode?.();
+                    const name = nameNode?.getText() || (node as any).getName?.();
+
+                    if (name === query) {
+                        const startLine = sourceFile.getLineAndColumnAtPos(node.getStart()).line;
+                        const endLine = sourceFile.getLineAndColumnAtPos(node.getEnd()).line;
+                        const filePath = path.relative(this.config.codebasePath, sourceFile.getFilePath()).split(path.sep).join("/");
+                        const kind = node.getKindName().replace("Declaration", "");
+                        results.push(`--- Found ${kind} "${query}" in ${filePath}:${startLine}-${endLine} ---\n${node.getText()}`);
+                    }
+                }
+            });
+        }
+
+        const out = results.join("\n\n");
+        this.tracker.log({
+            type: "code_analysis",
+            path: "semantic_search",
+            details: { after: out || `No definition found for "${query}".`, toolName: "semantic_search" },
+            status: "executed",
+        });
+        return out || `No definition found for "${query}".`;
     }
 
     analyzeCodebase(rootRel: string): string {
