@@ -6,11 +6,13 @@ export function createAgentTools(executor: ToolExecutor) {
     return {
         read_file: tool({
             description:
-                "Read the content of a file from the workspace. Use a relative path to the project root.",
+                "Read the content of a file from the workspace. Use a relative path to the project root. Can optionally specify a line range.",
             inputSchema: z.object({
-                path: z.string().describe("Relative file path.")
+                path: z.string().describe("Relative file path."),
+                start_line: z.number().optional().describe("1-indexed start line"),
+                end_line: z.number().optional().describe("1-indexed end line"),
             }),
-            execute: async ({ path: p }) => executor.readFile(p)
+            execute: async ({ path: p, start_line, end_line }) => executor.readFile(p, start_line, end_line)
         }),
 
         create_file: tool({
@@ -42,6 +44,18 @@ export function createAgentTools(executor: ToolExecutor) {
                 replace_string: z.string().describe("The string to replace the search_string with."),
             }),
             execute: async ({ path: p, search_string, replace_string }) => executor.patchFile(p, search_string, replace_string),
+        }),
+
+        replace_lines: tool({
+            description:
+                "Stage a modification to an existing file by replacing a specific line range. This is the safest way to modify code.",
+            inputSchema: z.object({
+                path: z.string(),
+                start_line: z.number().describe("1-indexed start line of the range to replace"),
+                end_line: z.number().describe("1-indexed end line of the range to replace (inclusive)"),
+                replacement_content: z.string().describe("The new content to insert in place of the specified lines."),
+            }),
+            execute: async ({ path: p, start_line, end_line, replacement_content }) => executor.replaceLines(p, start_line, end_line, replacement_content),
         }),
 
         delete_file: tool({

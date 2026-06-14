@@ -78,7 +78,7 @@ export class ToolExecutor {
         return fs.readFileSync(abs, "utf8");
     }
 
-    readFile(rel: string): string {
+    readFile(rel: string, startLine?: number, endLine?: number): string {
         this.assertNotExcluded(rel, "read_file");
         const abs = this.resolveSafe(rel);
         if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
@@ -88,7 +88,16 @@ export class ToolExecutor {
         if (st.size > this.config.maxFileSizeToRead) {
             throw new Error(`File too large: ${rel}`);
         }
-        const text = fs.readFileSync(abs, "utf8");
+        let text = fs.readFileSync(abs, "utf8");
+        
+        if (startLine !== undefined || endLine !== undefined) {
+            const lines = text.split("\n");
+            const start = Math.max(1, startLine || 1);
+            const end = Math.min(lines.length, endLine || lines.length);
+            const sliced = lines.slice(start - 1, end).map((l, i) => `${start + i}: ${l}`);
+            text = sliced.join("\n");
+        }
+
         this.tracker.log({
             type: "code_analysis",
             path: this.norm(rel),
@@ -163,6 +172,37 @@ export class ToolExecutor {
             status: "pending",
         });
         return `Staged patch for: ${key}`;
+    }
+
+    replaceLines(rel: string, startLine: number, endLine: number, replace: string): string {
+        if (!this.config.tools.allowFileModification)
+            throw new Error("File modification disabled");
+        this.assertNotExcluded(rel, "replace_lines");
+        const before = this.getEffectiveText(rel);
+        if (before === undefined)
+            throw new Error(`replace_lines: file not found: ${rel}`);
+
+        const lines = before.split("\n");
+        if (startLine < 1 || startLine > lines.length || endLine < startLine || endLine > lines.length) {
+            throw new Error(`replace_lines: invalid line range ${startLine}-${endLine} (file has ${lines.length} lines)`);
+        }
+
+        const afterLines = [
+            ...lines.slice(0, startLine - 1),
+            replace,
+            ...lines.slice(endLine)
+        ];
+        
+        const after = afterLines.join("\n");
+        const key = this.norm(rel);
+        this.overlay.set(key, after);
+        this.tracker.log({
+            type: "file_modify",
+            path: key,
+            details: { before, after },
+            status: "pending",
+        });
+        return `Staged line replacement for: ${key}`;
     }
 
     deleteFile(rel: string): string {
