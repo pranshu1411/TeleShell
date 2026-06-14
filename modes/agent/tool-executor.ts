@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn, type ChildProcess } from 'node:child_process';
 import { Project, Node } from "ts-morph";
 import type { AgentConfig, ActionLog } from './types';
 import { ActionTracker } from './action-tracer';
@@ -32,6 +32,7 @@ function maybeTextFile(filePath: string): boolean {
 export class ToolExecutor {
     private overlay = new Map<string, string>();
     private deleted = new Set<string>();
+    private bgProcesses = new Map<string, { child: ChildProcess, logPath: string }>();
     private readonly norm = (rel: string) => path.posix.normalize(rel.split(path.sep).join("/")).replace(/^\//, "");
 
     constructor(
@@ -471,6 +472,91 @@ export class ToolExecutor {
         });
 
         return finalOutput;
+    }
+
+    spawnBackground(command: string): string {
+        if (!this.config.tools.allowShellExecution)
+            throw new Error("Shell execution disabled");
+
+        const id = "bg-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 7);
+        const logPath = path.join(this.config.codebasePath, `.teleshell-${id}.log`);
+        
+        const child = spawn(command, {
+            shell: true,
+            cwd: this.config.codebasePath,
+        });
+
+        const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+        child.stdout?.pipe(logStream);
+        child.stderr?.pipe(logStream);
+
+        child.on('close', (code) => {
+            fs.appendFileSync(logPath, `\n[Process exited with code ${code}]\n`);
+        });
+
+        this.bgProcesses.set(id, { child, logPath });
+        
+        this.tracker.log({
+            type: "tool_execute",
+            path: "shell",
+            details: { command, toolName: "spawn_background", toolResult: `Spawned ${id}` },
+            status: "executed",
+        });
+
+        return `Background process spawned with ID: ${id}. Logs are being written to ${logPath}`;
+    }
+
+    readBackgroundLog(id: string, lines: number = 50): string {
+        const proc = this.bgProcesses.get(id);
+        if (!proc) {
+            throw new Error(`No background process found with ID: ${id}`);
+        }
+        
+        if (!fs.existsSync(proc.logPath)) {
+            return "(Log file not found or empty)";
+        }
+
+        const text = fs.readFileSync(proc.logPath, "utf8");
+        const allLines = text.split("\n");
+        const tail = allLines.slice(-Math.abs(lines)).join("\n");
+        
+        this.tracker.log({
+            type: "code_analysis",
+            path: `log:${id}`,
+            details: { toolName: "read_background_log", toolResult: tail },
+            status: "executed",
+        });
+        
+        return tail || "(Log empty)";
+    }
+
+    killBackground(id: string): string {
+        const proc = this.bgProcesses.get(id);
+        if (!proc) {
+            throw new Error(`No background process found with ID: ${id}`);
+        }
+        
+        // Kill the process and any child processes
+        if (process.platform === 'win32' && proc.child.pid) {
+            spawnSync(`taskkill /pid ${proc.child.pid} /t /f`, { shell: true });
+        } else {
+            proc.child.kill();
+        }
+        
+        this.bgProcesses.delete(id);
+        
+        try {
+            if (fs.existsSync(proc.logPath)) fs.rmSync(proc.logPath);
+        } catch(e) {}
+        
+        this.tracker.log({
+            type: "tool_execute",
+            path: "shell",
+            details: { toolName: "kill_background", toolResult: `Killed ${id}` },
+            status: "executed",
+        });
+
+        return `Killed process ${id} and cleaned up log.`;
     }
 
     skillRoots(): string[] {

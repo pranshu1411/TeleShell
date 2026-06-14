@@ -133,6 +133,43 @@ export function createAgentTools(executor: ToolExecutor) {
             execute: async ({ command }) => executor.executeImmediate(command),
         }),
 
+        get_git_status: tool({
+            description: "Get the current git status to see modified, staged, and untracked files.",
+            inputSchema: z.object({}),
+            execute: async () => executor.executeImmediate("git status -s"),
+        }),
+
+        get_git_diff: tool({
+            description: "Get the git diff of currently modified but unstaged files. Use this to understand what you or the user just changed.",
+            inputSchema: z.object({}),
+            execute: async () => executor.executeImmediate("git diff"),
+        }),
+
+        spawn_background_process: tool({
+            description: "Spawn a long-running background process (like a dev server, npm run dev, etc). Returns a Process ID.",
+            inputSchema: z.object({
+                command: z.string(),
+            }),
+            execute: async ({ command }) => executor.spawnBackground(command),
+        }),
+
+        read_background_log: tool({
+            description: "Read the latest output lines from a background process.",
+            inputSchema: z.object({
+                process_id: z.string(),
+                lines: z.number().optional().describe("Number of tail lines to read (default 50)"),
+            }),
+            execute: async ({ process_id, lines }) => executor.readBackgroundLog(process_id, lines),
+        }),
+
+        kill_background_process: tool({
+            description: "Kill a running background process using its Process ID.",
+            inputSchema: z.object({
+                process_id: z.string(),
+            }),
+            execute: async ({ process_id }) => executor.killBackground(process_id),
+        }),
+
         list_skills: tool({
             description:
                 "List absolute paths to SKILL.md files under configured skill directories (Cursor / Claude).",
