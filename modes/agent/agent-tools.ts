@@ -25,12 +25,23 @@ export function createAgentTools(executor: ToolExecutor) {
 
         modify_file: tool({
             description:
-                "Stage a full-file replacement for an existing file (pending approval).",
+                "Stage a full-file replacement for an existing file (pending approval). WARNING: Do NOT use this for large files. Use patch_file instead to avoid context limits and truncation.",
             inputSchema: z.object({
                 path: z.string(),
                 content: z.string().describe("Complete new file contents"),
             }),
             execute: async ({ path: p, content }) => executor.modifyFile(p, content),
+        }),
+
+        patch_file: tool({
+            description:
+                "Stage a modification to an existing file by replacing a specific string. Always prefer this over modify_file for existing files to save tokens.",
+            inputSchema: z.object({
+                path: z.string(),
+                search_string: z.string().describe("Exact string to search for and replace. Must match the file content exactly, including whitespace and indentation."),
+                replace_string: z.string().describe("The string to replace the search_string with."),
+            }),
+            execute: async ({ path: p, search_string, replace_string }) => executor.patchFile(p, search_string, replace_string),
         }),
 
         delete_file: tool({

@@ -135,6 +135,35 @@ export class ToolExecutor {
         return `Staged update: ${key}`;
     }
 
+    patchFile(rel: string, search: string, replace: string): string {
+        if (!this.config.tools.allowFileModification)
+            throw new Error("File modification disabled");
+        this.assertNotExcluded(rel, "patch_file");
+        const before = this.getEffectiveText(rel);
+        if (before === undefined)
+            throw new Error(`patch_file: file not found: ${rel}`);
+
+        if (!before.includes(search)) {
+            throw new Error(`patch_file: search string not found in file: ${rel}. Provide the exact string match, including precise whitespace and indentation.`);
+        }
+        
+        const count = before.split(search).length - 1;
+        if (count > 1) {
+            throw new Error(`patch_file: search string matches multiple times (${count}). Please provide more context lines to uniquely identify the block to replace.`);
+        }
+
+        const after = before.replace(search, replace);
+        const key = this.norm(rel);
+        this.overlay.set(key, after);
+        this.tracker.log({
+            type: "file_modify",
+            path: key,
+            details: { before, after },
+            status: "pending",
+        });
+        return `Staged patch for: ${key}`;
+    }
+
     deleteFile(rel: string): string {
         if (!this.config.tools.allowFileModification)
             throw new Error("File deletion disabled");
