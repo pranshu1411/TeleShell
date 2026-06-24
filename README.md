@@ -2,6 +2,33 @@
 
 A lightweight, terminal-centric shell that lets you interact with an AI-powered assistant. The project demonstrates how to use the `ai` library together with `@clack/prompts` to build a functional command-line assistant, along with a Telegram bot integration for remote usage.
 
+## Architecture
+
+```mermaid
+graph TD
+    User([User]) -->|teleshell wakeup| App
+    
+    subgraph TeleShell
+        App{Entry Point}
+        
+        App -->|Select CLI| CLI[CLI Mode]
+        App -->|Select Telegram| TG[Telegram Mode]
+        
+        CLI --> Agent[Agent Mode]
+        CLI --> Planner[Planner Mode]
+        CLI --> Ask[Ask Mode]
+        
+        TG --> Bot[Telegraf Bot]
+    end
+    
+    Agent --> Tools((Agent Toolkit))
+    Bot --> Tools
+    
+    Tools --> AST[AST Semantic Search]
+    Tools --> VFS[Virtual Filesystem]
+    Tools --> Shell[Shell Execution]
+```
+
 ## Features
 
 * **Wake-up Banner** – A welcoming interactive screen generated with `figlet` and `chalk`.
@@ -107,41 +134,27 @@ Select **CLI** to run the local terminal UI. You'll be prompted to choose a sub-
 ### Telegram Mode
 Select **Telegram** to start the Telegram bot. It will send a welcome message to the `TELEGRAM_OWNER_ID` specified in your `.env` file. You can then interact with the bot from the Telegram app.
 
-## Architecture
-
-```mermaid
-graph TD
-    User([User]) -->|teleshell wakeup| App
-    
-    subgraph TeleShell
-        App{Entry Point}
-        
-        App -->|Select CLI| CLI[CLI Mode]
-        App -->|Select Telegram| TG[Telegram Mode]
-        
-        CLI --> Agent[Agent Mode]
-        CLI --> Planner[Planner Mode]
-        CLI --> Ask[Ask Mode]
-        
-        TG --> Bot[Telegraf Bot]
-    end
-    
-    Agent --> Tools((Agent Toolkit))
-    Bot --> Tools
-    
-    Tools --> AST[AST Semantic Search]
-    Tools --> VFS[Virtual Filesystem]
-    Tools --> Shell[Shell Execution]
-```
-
 ## Project Structure
 
 ```
-├─ ai            # AI configuration & core SDK integration
-├─ modes         # Feature implementations: agent, ask, plan, telegram
-├─ tui           # Terminal UI helpers (banner, interactive prompts)
-├─ index.ts      # CLI bootstrap and entry point
-└─ package.json  # Dependencies and scripts
+├─ ai/
+│  └─ ai.config.ts        # Model initialization and API keys
+├─ modes/
+│  ├─ agent/              # The core autonomous agent logic
+│  │  ├─ orchestrator.ts  # Main agent event loop
+│  │  ├─ agent-tools.ts   # Zod schemas for the tool suite
+│  │  ├─ tool-executor.ts # Real implementations (AST, Virtual FS, Shell)
+│  │  ├─ action-tracer.ts # Staging layer for unapproved mutations
+│  │  └─ approval.ts      # Multi-select approval UI
+│  ├─ ask/                # Q&A mode implementation
+│  ├─ plan/               # Planner mode implementation
+│  ├─ telegram/           # Telegraf bot mode logic
+│  └─ cli.ts              # CLI mode router
+├─ tui/
+│  ├─ wakeup.ts           # The initial interactive CLI banner and menu
+│  └─ terminal-md.ts      # Markdown rendering in the terminal
+├─ index.ts               # CLI bootstrap and entry point
+└─ package.json           # Scripts and dependencies
 ```
 
 ## Agent Toolkit
